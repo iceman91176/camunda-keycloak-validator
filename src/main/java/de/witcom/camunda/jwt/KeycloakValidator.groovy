@@ -24,19 +24,28 @@ import groovy.transform.CompileStatic
 class KeycloakValidator extends AbstractValidatorJwt{
 	
 	private static final Logger LOG = LoggerFactory.getLogger(KeycloakValidator.class)
-	private String serverUrl = "https://auth.witcom-dev.services/auth"
-	private String realmId = "demo-realm"
+	private String serverUrl = null
+	private String realmId = null
 
 	@Override
 	public ValidatorResultJwt validateJwt(String encodedCredentials, String jwtSecretPath) {
 		
 		if (!serverUrl) {
-			serverUrl = "https://auth.witcom-dev.services/auth"
+			serverUrl = System.getenv("KEYCLOAK_SERVER_URL")
+			if (!serverUrl) {
+				LOG.error("Keycloak Server URL not set - authorisation not possible")
+				return ValidatorResultJwt.setValidatorResult(false, null, null, null)
+			}
 		}
 		
 		if (!realmId) {
-			realmId = "demo-realm"
+			realmId = System.getenv("KEYCLOAK_REALM_ID")
+			if (!realmId) {
+				LOG.error("Keycloak REALM-ID not set - authorisation not possible")
+				return ValidatorResultJwt.setValidatorResult(false, null, null, null)
+			}
 		}
+		
 		
 		AccessToken accessToken = extractAccessToken(encodedCredentials);
 		if (accessToken == null) {
