@@ -10,7 +10,7 @@ import org.junit.Test
 class KeyCloakValidatorTest {
 
 	@Test
-	@Ignore
+	//@Ignore
 	public void testValidateJwtStringString() {
 		
 		ValidatorResultJwt validatorResult
