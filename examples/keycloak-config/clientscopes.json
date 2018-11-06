@@ -1,0 +1,27 @@
+{
+  "clientScopes": [
+    {
+      "name": "camunda-scope",
+      "protocol": "openid-connect",
+      "attributes": {
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "groupIds",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groupIds",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ]
+}

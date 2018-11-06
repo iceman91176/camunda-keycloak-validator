@@ -1,0 +1,9 @@
+camunda:
+    build: .
+    environment:
+    - JAVA_OPTS=-Djava.security.egd=file:/dev/./urandom 
+    - PRETTY_JSON_LOG=true
+    - KEYCLOAK_SERVER_URL=https://auth.witcom-dev.services/auth
+    - KEYCLOAK_REALM_ID=demo-realm
+    ports:
+    - "8056:8080"

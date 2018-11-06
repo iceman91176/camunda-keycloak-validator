@@ -1,0 +1,10 @@
+{
+	"roles": {
+		"realm": [{
+			"name": "camunda-admin",
+			"composite": false,
+			"clientRole": false,
+			"containerId": "demo-realm"
+		}]
+	}
+}
