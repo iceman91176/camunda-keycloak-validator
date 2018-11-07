@@ -63,7 +63,7 @@ class KeycloakValidator extends AbstractValidatorJwt{
 		}
 		
 	    if (System.getenv("ROLE_PREFIX_TENANT")){
-		    groupPrefix = System.getenv("ROLE_PREFIX_TENANT")
+		    tenantPrefix = System.getenv("ROLE_PREFIX_TENANT")
 		}
 		
 		
@@ -80,8 +80,9 @@ class KeycloakValidator extends AbstractValidatorJwt{
 		//Get Groups & Tenants from Keycloak-roles
 		//to distinguish them, role-groups are prefixed by Variable groupPrefix, role-tennats by variable tenantPrefix
 		Map<String,AccessToken.Access> resAccess = accessToken.getResourceAccess();
-		if (resAccess.containsKey("camunda-simple-client")){
-		    Set<String> roles = resAccess.get("camunda-simple-client").getRoles();
+		if (resAccess.containsKey(clientId)){
+		    Set<String> roles = resAccess.get(clientId).getRoles();
+		    LOG.error("Found resource-roles in token {}",roles.toString())
 		    roles.each {
 		        if (it.startsWith(groupPrefix)){
 		          groupIds.add(it.substring(groupPrefix.length()))
@@ -90,7 +91,11 @@ class KeycloakValidator extends AbstractValidatorJwt{
 		          tenantIds.add(it.substring(tenantPrefix.length()))
 		        }
 		    }
+		}else {
+		    LOG.error("No resource roles found")
 		}
+		
+		LOG.error("Extracted camunda-groups {} from token",groupIds.toString())
 
         //Alternative to keycloak roles - groups and tenants are passed as claim
 		Map<String, Object> claims = accessToken.getOtherClaims();
