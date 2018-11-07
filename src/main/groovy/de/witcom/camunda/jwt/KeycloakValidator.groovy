@@ -8,6 +8,7 @@ import java.security.KeyFactory
 import java.security.PublicKey
 import java.security.spec.RSAPublicKeySpec
 import java.util.Base64.Decoder
+import java.util.Set
 
 import org.keycloak.RSATokenVerifier
 import org.keycloak.common.VerificationException
@@ -26,6 +27,9 @@ class KeycloakValidator extends AbstractValidatorJwt{
 	private static final Logger LOG = LoggerFactory.getLogger(KeycloakValidator.class)
 	private String serverUrl = null
 	private String realmId = null
+	private String clientId = null
+	private String groupPrefix = "camunda_group-";
+	private String tenantPrefix = "camunda_tenant-";
 
 	@Override
 	public ValidatorResultJwt validateJwt(String encodedCredentials, String jwtSecretPath) {
@@ -46,27 +50,56 @@ class KeycloakValidator extends AbstractValidatorJwt{
 			}
 		}
 		
+		if (!clientId) {
+			clientId = System.getenv("KEYCLOAK_CLIENT_ID")
+			if (!clientId) {
+				LOG.error("Keycloak KEYCLOAK_CLIENT_ID not set - authorisation not possible")
+				return ValidatorResultJwt.setValidatorResult(false, null, null, null)
+			}
+		}
+		
+		if (System.getenv("ROLE_PREFIX_GROUP")){
+		    groupPrefix = System.getenv("ROLE_PREFIX_GROUP")
+		}
+		
+	    if (System.getenv("ROLE_PREFIX_TENANT")){
+		    groupPrefix = System.getenv("ROLE_PREFIX_TENANT")
+		}
+		
 		
 		AccessToken accessToken = extractAccessToken(encodedCredentials);
 		if (accessToken == null) {
 			return ValidatorResultJwt.setValidatorResult(false, null, null, null)
 		}
 		String username = accessToken.getPreferredUsername();
-		Map<String, Object> claims = accessToken.getOtherClaims();
+		
 		
 		ArrayList<String> groupIds = new ArrayList<String>();
-		
+		ArrayList<String> tenantIds = new ArrayList<String>();
+
+		//Get Groups & Tenants from Keycloak-roles
+		//to distinguish them, role-groups are prefixed by Variable groupPrefix, role-tennats by variable tenantPrefix
+		Map<String,AccessToken.Access> resAccess = accessToken.getResourceAccess();
+		if (resAccess.containsKey("camunda-simple-client")){
+		    Set<String> roles = resAccess.get("camunda-simple-client").getRoles();
+		    roles.each {
+		        if (it.startsWith(groupPrefix)){
+		          groupIds.add(it.substring(groupPrefix.length()))
+		        }
+		        if (it.startsWith(tenantPrefix)){
+		          tenantIds.add(it.substring(tenantPrefix.length()))
+		        }
+		    }
+		}
+
+        //Alternative to keycloak roles - groups and tenants are passed as claim
+		Map<String, Object> claims = accessToken.getOtherClaims();
 		if (claims.containsKey("groupIds")) {
 			groupIds = (ArrayList<String>) claims.get("groupIds");
-		} else {
-			LOG.debug("Claims do not contain groupIds !")
 		}
 		
-		ArrayList<String> tenantIds = new ArrayList<String>();
 		if (claims.containsKey("tenantIds")) {
 			tenantIds = (ArrayList<String>) claims.get("tenantIds");
-		} else {
-			LOG.debug("Claims do not contain tenantIds !")
 		}
 		
 		if (!username){
