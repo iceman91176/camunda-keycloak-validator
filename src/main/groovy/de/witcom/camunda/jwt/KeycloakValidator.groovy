@@ -82,7 +82,7 @@ class KeycloakValidator extends AbstractValidatorJwt{
 		Map<String,AccessToken.Access> resAccess = accessToken.getResourceAccess();
 		if (resAccess.containsKey(clientId)){
 		    Set<String> roles = resAccess.get(clientId).getRoles();
-		    LOG.error("Found resource-roles in token {}",roles.toString())
+		    LOG.debug("Found resource-roles in token {}",roles.toString())
 		    roles.each {
 		        if (it.startsWith(groupPrefix)){
 		          groupIds.add(it.substring(groupPrefix.length()))
@@ -95,7 +95,7 @@ class KeycloakValidator extends AbstractValidatorJwt{
 		    LOG.error("No resource roles found")
 		}
 		
-		LOG.error("Extracted camunda-groups {} from token",groupIds.toString())
+		LOG.debug("Extracted camunda-groups {} from token",groupIds.toString())
 
         //Alternative to keycloak roles - groups and tenants are passed as claim
 		Map<String, Object> claims = accessToken.getOtherClaims();
