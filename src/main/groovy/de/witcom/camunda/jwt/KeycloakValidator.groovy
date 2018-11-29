@@ -8,6 +8,7 @@ import java.security.KeyFactory
 import java.security.PublicKey
 import java.security.spec.RSAPublicKeySpec
 import java.util.Base64.Decoder
+import java.util.Set
 
 import org.keycloak.RSATokenVerifier
 import org.keycloak.common.VerificationException
@@ -26,6 +27,11 @@ class KeycloakValidator extends AbstractValidatorJwt{
 	private static final Logger LOG = LoggerFactory.getLogger(KeycloakValidator.class)
 	private String serverUrl = null
 	private String realmId = null
+	private String clientId = null
+	private String groupPrefix = "camunda_group-";
+	private String tenantPrefix = "camunda_tenant-";
+	private String claimGroups = "groupIds";
+	private String claimTenants = "tenantIds";
 
 	@Override
 	public ValidatorResultJwt validateJwt(String encodedCredentials, String jwtSecretPath) {
@@ -46,33 +52,91 @@ class KeycloakValidator extends AbstractValidatorJwt{
 			}
 		}
 		
+		if (!clientId) {
+			clientId = System.getenv("KEYCLOAK_CLIENT_ID")
+			if (!clientId) {
+				LOG.error("Keycloak KEYCLOAK_CLIENT_ID not set - authorisation not possible")
+				return ValidatorResultJwt.setValidatorResult(false, null, null, null)
+			}
+		}
+		
+		if (System.getenv("ROLE_PREFIX_GROUP")){
+		    groupPrefix = System.getenv("ROLE_PREFIX_GROUP")
+		}
+		
+	    if (System.getenv("ROLE_PREFIX_TENANT")){
+		    tenantPrefix = System.getenv("ROLE_PREFIX_TENANT")
+		}
+		
+		if (System.getenv("CLAIM_GROUPS")){
+		    claimGroups = System.getenv("CLAIM_GROUPS")
+		}
+		
+		if (System.getenv("CLAIM_TENANTS")){
+		    claimTenants = System.getenv("CLAIM_TENANTS")
+		}
 		
 		AccessToken accessToken = extractAccessToken(encodedCredentials);
 		if (accessToken == null) {
 			return ValidatorResultJwt.setValidatorResult(false, null, null, null)
 		}
 		String username = accessToken.getPreferredUsername();
-		Map<String, Object> claims = accessToken.getOtherClaims();
-		
-		ArrayList<String> groupIds = new ArrayList<String>();
-		
-		if (claims.containsKey("groupIds")) {
-			groupIds = (ArrayList<String>) claims.get("groupIds");
-		} else {
-			LOG.debug("Claims do not contain groupIds !")
-		}
-		
-		ArrayList<String> tenantIds = new ArrayList<String>();
-		if (claims.containsKey("tenantIds")) {
-			tenantIds = (ArrayList<String>) claims.get("tenantIds");
-		} else {
-			LOG.debug("Claims do not contain tenantIds !")
-		}
-		
 		if (!username){
 			LOG.error("BAD JWT: Missing username")
 			return ValidatorResultJwt.setValidatorResult(false, null, null, null)
 		}
+		
+		ArrayList<String> groupIds = new ArrayList<String>();
+		ArrayList<String> tenantIds = new ArrayList<String>();
+		
+		//Get Groups & Tenants from claims
+		//Preferred way, because we (or camunda processes need groups in keycloak anyway)
+		Map<String, Object> otherClaims = accessToken.getOtherClaims();
+		//Groups
+		if (otherClaims.containsKey(claimGroups)) {
+		    ArrayList<String> groups = (ArrayList<String>) otherClaims.get(claimGroups);
+		    LOG.debug("Found groups in token {}",groups.toString())
+		    groups.each {
+		        if (it.startsWith(groupPrefix)){
+		          groupIds.add(it.substring(groupPrefix.length()))
+		        }
+		    }
+        }
+        //Tenants
+        if (otherClaims.containsKey(claimTenants)) {
+		    ArrayList<String> tenants = (ArrayList<String>) otherClaims.get(claimTenants);
+		    LOG.debug("Found tenants in token {}",tenants.toString())
+		    tenants.each {
+		        if (it.startsWith(tenantPrefix)){
+		          tenantIds.add(it.substring(tenantPrefix.length()))
+		        }
+		    }
+        }
+        LOG.debug("Extracted camunda-groups {} from claim",groupIds.toString())
+
+		//Alternative:  Get Groups & Tenants from Keycloak-roles
+		//to distinguish them, role-groups are prefixed by Variable groupPrefix, role-tennats by variable tenantPrefix
+		Map<String,AccessToken.Access> resAccess = accessToken.getResourceAccess();
+		if (resAccess.containsKey(clientId)){
+		    Set<String> roles = resAccess.get(clientId).getRoles();
+		    LOG.debug("Found resource-roles in token {}",roles.toString())
+		    roles.each {
+		        if (it.startsWith(groupPrefix)){
+		          groupIds.add(it.substring(groupPrefix.length()))
+		        }
+		        if (it.startsWith(tenantPrefix)){
+		          tenantIds.add(it.substring(tenantPrefix.length()))
+		        }
+		    }
+		}
+		
+		LOG.debug("Extracted camunda-groups {} from roles",groupIds.toString())
+		
+		if (groupIds.size() == 0){
+		    LOG.warn("No camunda groups could be retrieved from either claims or roles");
+		}
+
+		
 
 		return ValidatorResultJwt.setValidatorResult(true, username, groupIds, tenantIds)
 	}

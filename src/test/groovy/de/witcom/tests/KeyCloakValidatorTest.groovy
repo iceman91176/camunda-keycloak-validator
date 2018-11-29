@@ -10,7 +10,7 @@ import org.junit.Test
 class KeyCloakValidatorTest {
 
 	@Test
-	//@Ignore
+	@Ignore
 	public void testValidateJwtStringString() {
 		
 		ValidatorResultJwt validatorResult
@@ -24,7 +24,7 @@ class KeyCloakValidatorTest {
 		}
 		try{
 			AbstractValidatorJwt validator = (AbstractValidatorJwt)jwtValidatorClass.newInstance()
-			validatorResult = validator.validateJwt('INSERT-TOKEN-HERE', null)
+			validatorResult = validator.validateJwt('TOKEN', null)
 		} catch(all){
 			fail("Could not load Jwt Validator Class" + all.getLocalizedMessage())
 		}
