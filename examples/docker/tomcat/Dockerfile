@@ -11,9 +11,11 @@ COPY docker/camunda/webapps/engine-rest/WEB-INF/web.xml /camunda/webapps/engine-
 COPY docker/camunda/webapps/engine-rest/WEB-INF/lib/camunda-keycloak-validator-1.0.0-jar-with-dependencies.jar /camunda/webapps/engine-rest/WEB-INF/lib/camunda-keycloak-validator-1.0.0-jar-with-dependencies.jar
 
 #Example of adding additional CA-Certs to Java-Truststore
-#USER root
-#COPY docker/certs/myca.pem /etc/ssl/certs/java/myca.pem
-#RUN \
-#    cd /etc/ssl/certs/java \
-#    && keytool -keystore cacerts -storepass changeit -noprompt -trustcacerts -importcert -alias intermediateca -file myca.pem
+USER root
+COPY docker/certs/witca.pem /etc/ssl/certs/java/witca.pem
+COPY docker/certs/intermediateca.pem /etc/ssl/certs/java/intermediateca.pem
+RUN \
+    cd /etc/ssl/certs/java \
+    && keytool -keystore cacerts -storepass changeit -noprompt -trustcacerts -importcert -alias witca -file witca.pem \
+    && keytool -keystore cacerts -storepass changeit -noprompt -trustcacerts -importcert -alias intermediateca -file intermediateca.pem
 

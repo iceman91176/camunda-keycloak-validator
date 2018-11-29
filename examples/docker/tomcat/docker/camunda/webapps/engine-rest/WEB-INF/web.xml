@@ -6,6 +6,16 @@
         <listener-class>org.camunda.bpm.engine.rest.impl.FetchAndLockContextListener</listener-class>
     </listener>
 
+<filter>
+      <filter-name>CorsFilter</filter-name>
+      <filter-class>org.apache.catalina.filters.CorsFilter</filter-class>
+      <async-supported>true</async-supported>
+  </filter>
+  <filter-mapping>
+      <filter-name>CorsFilter</filter-name>
+      <url-pattern>/*</url-pattern>
+  </filter-mapping>
+
     <filter>
         <filter-name>EmptyBodyFilter</filter-name>
         <filter-class>org.camunda.bpm.engine.rest.filter.EmptyBodyFilter</filter-class>
