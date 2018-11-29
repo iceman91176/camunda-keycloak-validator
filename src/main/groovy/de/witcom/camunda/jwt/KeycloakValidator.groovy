@@ -30,6 +30,8 @@ class KeycloakValidator extends AbstractValidatorJwt{
 	private String clientId = null
 	private String groupPrefix = "camunda_group-";
 	private String tenantPrefix = "camunda_tenant-";
+	private String claimGroups = "groupIds";
+	private String claimTenants = "tenantIds";
 
 	@Override
 	public ValidatorResultJwt validateJwt(String encodedCredentials, String jwtSecretPath) {
@@ -66,18 +68,53 @@ class KeycloakValidator extends AbstractValidatorJwt{
 		    tenantPrefix = System.getenv("ROLE_PREFIX_TENANT")
 		}
 		
+		if (System.getenv("CLAIM_GROUPS")){
+		    claimGroups = System.getenv("CLAIM_GROUPS")
+		}
+		
+		if (System.getenv("CLAIM_TENANTS")){
+		    claimTenants = System.getenv("CLAIM_TENANTS")
+		}
 		
 		AccessToken accessToken = extractAccessToken(encodedCredentials);
 		if (accessToken == null) {
 			return ValidatorResultJwt.setValidatorResult(false, null, null, null)
 		}
 		String username = accessToken.getPreferredUsername();
-		
+		if (!username){
+			LOG.error("BAD JWT: Missing username")
+			return ValidatorResultJwt.setValidatorResult(false, null, null, null)
+		}
 		
 		ArrayList<String> groupIds = new ArrayList<String>();
 		ArrayList<String> tenantIds = new ArrayList<String>();
+		
+		//Get Groups & Tenants from claims
+		//Preferred way, because we (or camunda processes need groups in keycloak anyway)
+		Map<String, Object> otherClaims = accessToken.getOtherClaims();
+		//Groups
+		if (otherClaims.containsKey(claimGroups)) {
+		    ArrayList<String> groups = (ArrayList<String>) otherClaims.get(claimGroups);
+		    LOG.debug("Found groups in token {}",groups.toString())
+		    groups.each {
+		        if (it.startsWith(groupPrefix)){
+		          groupIds.add(it.substring(groupPrefix.length()))
+		        }
+		    }
+        }
+        //Tenants
+        if (otherClaims.containsKey(claimTenants)) {
+		    ArrayList<String> tenants = (ArrayList<String>) otherClaims.get(claimTenants);
+		    LOG.debug("Found tenants in token {}",tenants.toString())
+		    tenants.each {
+		        if (it.startsWith(tenantPrefix)){
+		          tenantIds.add(it.substring(tenantPrefix.length()))
+		        }
+		    }
+        }
+        LOG.debug("Extracted camunda-groups {} from claim",groupIds.toString())
 
-		//Get Groups & Tenants from Keycloak-roles
+		//Alternative:  Get Groups & Tenants from Keycloak-roles
 		//to distinguish them, role-groups are prefixed by Variable groupPrefix, role-tennats by variable tenantPrefix
 		Map<String,AccessToken.Access> resAccess = accessToken.getResourceAccess();
 		if (resAccess.containsKey(clientId)){
@@ -91,26 +128,15 @@ class KeycloakValidator extends AbstractValidatorJwt{
 		          tenantIds.add(it.substring(tenantPrefix.length()))
 		        }
 		    }
-		}else {
-		    LOG.error("No resource roles found")
 		}
 		
-		LOG.debug("Extracted camunda-groups {} from token",groupIds.toString())
+		LOG.debug("Extracted camunda-groups {} from roles",groupIds.toString())
+		
+		if (groupIds.size() == 0){
+		    LOG.warn("No camunda groups could be retrieved from either claims or roles");
+		}
 
-        //Alternative to keycloak roles - groups and tenants are passed as claim
-		Map<String, Object> claims = accessToken.getOtherClaims();
-		if (claims.containsKey("groupIds")) {
-			groupIds = (ArrayList<String>) claims.get("groupIds");
-		}
 		
-		if (claims.containsKey("tenantIds")) {
-			tenantIds = (ArrayList<String>) claims.get("tenantIds");
-		}
-		
-		if (!username){
-			LOG.error("BAD JWT: Missing username")
-			return ValidatorResultJwt.setValidatorResult(false, null, null, null)
-		}
 
 		return ValidatorResultJwt.setValidatorResult(true, username, groupIds, tenantIds)
 	}
