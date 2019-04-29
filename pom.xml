@@ -21,6 +21,11 @@
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
+        <repository>
+            <id>witcom-repo</id>
+            <url>https://nexus.dev.witcom.services/repository/maven-public</url>
+        </repository>
+        
     </repositories>
 
     <dependencyManagement>
@@ -95,14 +100,12 @@
             <scope>provided</scope>
         </dependency>
 
-		 <dependency>
-		    <groupId>com.github.iceman91176</groupId>
-		    <artifactId>camunda-rest-jwt-authentication</artifactId>
-		    <version>master</version>
-		    <scope>provided</scope>
-		</dependency>
- 
-        
+        <dependency>
+          <groupId>io.digitalstate.camunda.authentication.jwt</groupId>
+          <artifactId>camunda-rest-api-jwt-authentication</artifactId>
+          <version>v0.5</version>
+          <scope>provided</scope>
+        </dependency>
       </dependencies>
   
    <build>
